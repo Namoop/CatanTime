@@ -4,6 +4,8 @@
 	let result = $state(1);
 	let reRoll = $state(false);
 
+	export const ROLL_TIME = 1500;
+
 	export function rollDie(num?: DieValue) {
 		result = num ?? Math.floor(Math.random() * (6 - 1 + 1)) + 1;
 		reRoll = !reRoll;
@@ -28,7 +30,7 @@
 	]
 </script>
 
-<main class="flex h-40 w-40 items-center justify-center flex-col gap-2 border-2">
+<main class="flex h-40 w-40 items-center justify-center flex-col gap-2">
 	<div id="dice" bind:this={dice} style={TransformData[result-1][reRoll ? "reRoll" : "base"]}>
 
 		{#each Array.from({ length: 6 }, (_, i) => i + 1) as side}

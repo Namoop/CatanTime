@@ -122,7 +122,6 @@ export class Interval extends Timer {
 	}
 	pause() {
 		if (!this.running && this.getTimeRemaining() != this.initial_time) {
-			console.log(this.getTimeRemaining())
 			console.warn(this.keyword + ' is not running');
 			return;
 		}

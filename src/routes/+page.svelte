@@ -17,16 +17,23 @@
 	let progressWidth = $state(0);
 	let progressInterval = 0;
 
-	const deck: DieValue[][] = [];
+
+	let audio: HTMLAudioElement;
+	let revealLog = $state(false);
+
+	const deck: DieValue[][] = $state([]);
 	function createDeck() {
 		for (let i = 1; i <= 6; i++)
 			for (let j = 1; j <= 6; j++)
 				deck.push([i, j] as DieValue[]);
 	}
+	const deckLog: DieValue[][] = $state([]);
 
 	function rollDice(){
 		if (deck.length === 0)
 			createDeck();
+
+		audio.play();
 
 		if (FAIR_DICE)
 			dice = deck.splice(Math.random() * deck.length | 0, 1)[0];
@@ -34,6 +41,7 @@
 			dice = [Math.random() * 6 + 1 | 0, Math.random() * 6 + 1 | 0] as DieValue[];
 		die1.rollDie(dice[0]);
 		die2.rollDie(dice[1]);
+		deckLog.push(dice);
 
 		if (dice[0] + dice[1] == 7)
 			stopTimer();
@@ -52,7 +60,6 @@
 
 		progressInterval = setInterval(() => {
 			progressWidth = (1- interval.getTimeRemaining() / interval.getInitialTime()) * 100
-			console.log(interval.getTimeRemaining())
 		}, 10);
 	}
 
@@ -69,7 +76,16 @@
 		interval.setTime(CONFIG.turn * 1000);
 	}
 
+	function skipTurn(){
+		interval.pause()
+		interval.reset()
+		startTimer()
+		turn();
+	}
+
 </script>
+
+<audio src="/tap.mp3" bind:this={audio}></audio>
 
 <main class="flex flex-col items-center gap-3 h-lvh bg-gray-200">
 
@@ -91,10 +107,16 @@
 	</div>
 
 
+	<div id="buttons">
 
-	<button onclick={()=>timer ? stopTimer() : startTimer()} class={`w-24 p-4 transition active:scale-90 text-center font-bold ${timer ? "bg-red-100" : ""} bg-white hover:bg-gray-200 border border-gray-300 shadow-lg rounded-lg }`}>
-		{timer ? "Stop" : "Start"}
-	</button>
+		<button onclick={()=>timer ? stopTimer() : startTimer()} class={`w-24 p-4 transition active:scale-90 text-center font-bold ${timer ? "bg-red-100" : "bg-white"} hover:bg-gray-200 border border-gray-300 shadow-lg rounded-lg duration-200}`}>
+			{timer ? "Stop" : "Start"}
+		</button>
+
+		<button onclick={skipTurn} class={`w-24 p-4 text-center font-bold active:scale-90 ${timer ? "bg-green-100" : "bg-white"}  hover:bg-gray-200 border border-gray-300 shadow-lg rounded-lg transition duration-200`}>
+			Skip >>
+		</button>
+	</div>
 
 	<div id="config" class="grid grid-cols-2 gap-3 w-56 items-center bg-white border border-gray-300 shadow-lg rounded-lg p-4">
 		<label for="fairDice" class="text-lg">Fair Dice</label>
@@ -102,5 +124,20 @@
 
 		<label for="turn" class="text-lg">Turn Time</label>
 		<input type="number" step="5" bind:value={CONFIG.turn} id="turn" class="border border-gray-300 rounded-lg p-2 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200" />
+	</div>
+
+	<div id="deckLog" class="bg-white border border-gray-300 shadow-lg rounded-lg p-4">
+		Reveal Log: &nbsp;
+		<input type="checkbox" bind:checked={revealLog} class="w-6 h-6 text-blue-600 border-gray-300 rounded focus:ring-blue-500"/>
+
+		{#if revealLog}
+			{#each deckLog.toReversed() as [d1, d2], i}
+				<div class="flex gap-3">
+					<strong>{deckLog.length - i}.</strong>
+					{d1 + d2} &nbsp;&nbsp;
+					[{d1}, {d2}]
+				</div>
+			{/each}
+		{/if}
 	</div>
 </main>

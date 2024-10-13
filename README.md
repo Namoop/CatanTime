@@ -1,22 +1,31 @@
-# create-svelte
+# Catan Time
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/main/packages/create-svelte).
+A simple timer for Real-Time Settlers of Catan.
 
-## Creating a project
+In Real-Time Settlers of Catan, players take their turns simultaneously.
+This timer helps keep the game moving by automatically rolling the dice at regular intervals.
 
-If you're seeing this, you've probably already done this step. Congrats!
+Choose your turn interval (recommended: 30 seconds)
+and the timer will automatically roll the dice.
 
-```bash
-# create a new project in the current directory
-npm create svelte@latest
+Fair dice are also the default, meaning those pips actually matter!
 
-# create a new project in my-app
-npm create svelte@latest my-app
-```
+This can be turned off if you prefer, but I will judge you.
+
+## Features
+
+- Set turn interval
+- Automatically roll dice
+- Fair dice
+- Pause and resume timer
+- Reset timer
+- Sound effects on roll
+- Visual effects on roll
+
 
 ## Developing
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Once you've created the project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
 
 ```bash
 npm run dev
@@ -25,14 +34,9 @@ npm run dev
 npm run dev -- --open
 ```
 
-## Building
+## Attributions
 
-To create a production version of your app:
-
-```bash
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
+- [Svelte](https://svelte.dev)
+- [Dice](https://codepen.io/abirana/pen/rNMLrPB)
+- [Chime](https://pixabay.com/users/lucadialessandro-25927643/)
+- [Favicon](https://www.flaticon.com/free-icons/dices) by Xinh Studio

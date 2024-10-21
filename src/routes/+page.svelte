@@ -50,12 +50,19 @@
 		clearTimeout(timeout);
 		timeout = setTimeout(() => {
 			total = dice[0] + dice[1];
+			if (turnCount === 1 && timer)
+				startTimer();
 		}, die1.ROLL_TIME);
 	}
 
 	let timer = $state(false);
 	function startTimer(){
 		timer = true;
+		if (turnCount === 0) {
+			turn();
+			return;
+		}
+
 		interval.start()
 
 		progressInterval = setInterval(() => {
@@ -66,7 +73,6 @@
 	function stopTimer(){
 		timer = false;
 		interval.pause();
-		clearTimeout(timeout);
 		clearInterval(progressInterval);
 	}
 

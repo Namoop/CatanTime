@@ -16,6 +16,8 @@
 	let interval = new Interval(CONFIG.turn * 1000, turn);
 	interval.setDelay(1500)
 
+	// Progress Bar
+
 	let progressBar: HTMLDivElement;
 	let progressAnimation: Animation;
 	onMount(() => {

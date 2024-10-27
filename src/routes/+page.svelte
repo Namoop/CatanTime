@@ -110,7 +110,7 @@
 
 </script>
 
-<audio src="/tap.mp3" bind:this={audio}></audio>
+<audio src="tap.mp3" bind:this={audio}></audio>
 
 <main class="flex flex-col items-center gap-3 h-lvh bg-gray-200">
 
@@ -132,7 +132,7 @@
 	</div>
 
 
-	<div id="buttons">
+	<div id="buttons" class={`${timer ? "scale-125" : ""} transition duration-300`}>
 
 		<button class={`w-24 p-4 text-center font-bold active:scale-90 hover:brightness-90 border border-gray-300 shadow-lg rounded-lg transition duration-200 ${timer ? "bg-red-100" : "bg-white"}`}
 				onclick={()=>timer ? stopTimer() : startTimer()}>

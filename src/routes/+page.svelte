@@ -110,7 +110,7 @@
 
 </script>
 
-<audio src="tap.mp3" bind:this={audio}></audio>
+<audio src="ding.mp3" bind:this={audio}></audio>
 
 <main class="flex flex-col items-center gap-3 h-lvh bg-gray-200">
 

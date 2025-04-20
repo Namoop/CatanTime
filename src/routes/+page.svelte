@@ -187,7 +187,7 @@
 
 <audio src="ding.mp3" bind:this={audio}></audio>
 
-<main class="flex flex-col items-center h-full gap-3 bg-gray-200">
+<main class="flex flex-col items-center min-h-full gap-3">
     <h1 class="text-3xl mt-6 font-mono font-bold">REAL TIME CATAN</h1>
     <a
         class="text-gray-500 hover:underline"

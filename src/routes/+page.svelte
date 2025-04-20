@@ -1,7 +1,7 @@
 <script lang="ts">
     import Die from "$lib/Die.svelte";
-    import { Interval } from "$lib/Timer";
-    import { onMount } from "svelte";
+    import {Interval} from "$lib/Timer";
+    import {onMount} from "svelte";
     import Swatches from "$lib/Swatches.svelte";
 
     let die1: Die, die2: Die;
@@ -10,7 +10,7 @@
     let turnCount = $state(0);
     let sevens = $state(0);
     let FAIR_DICE = $state("Balanced");
-    const diceOptions = ["Chaos", "Balanced", "Double Deck", "Deck"];
+    const diceOptions = ["Chaos", "Dice Deck", "Balanced", "Double Deck"];
     const CONFIG = $state({
         turn: 5,
     });
@@ -20,6 +20,7 @@
 
     // Wake lock
     let wakeLock: WakeLockSentinel | null = null;
+
     function wakeLockRequest() {
         try {
             if ("wakeLock" in navigator) {
@@ -34,6 +35,7 @@
             console.error("Wake lock request failed:", error);
         }
     }
+
     function wakeLockRelease() {
         if (wakeLock) {
             wakeLock.release().then(() => {
@@ -47,8 +49,8 @@
     let progressAnimation: Animation;
     onMount(() => {
         progressAnimation = progressBar.animate(
-            [{ width: "0" }, { width: "100%" }],
-            { duration: CONFIG.turn * 1000, iterations: Infinity },
+            [{width: "0"}, {width: "100%"}],
+            {duration: CONFIG.turn * 1000, iterations: Infinity},
         );
         progressAnimation.pause();
     });
@@ -57,6 +59,7 @@
     let revealLog = $state(false);
 
     let Deck: DieValue[][] = $derived(createDeck(FAIR_DICE));
+
     function createDeck(type: string) {
         let deck = [];
         const randDie = () => ((Math.random() * 6 + 1) | 0)
@@ -87,6 +90,7 @@
         console.log("Deck created:", type);
         return deck as DieValue[][];
     }
+
     const deckLog: DieValue[][] = $state([]);
 
     // // Effect: create deck on FAIR_DICE change
@@ -102,6 +106,7 @@
     }
 
     let diceTotal: HTMLElement;
+
     async function rollDice() {
 
         if (Deck.length === 0) Deck = createDeck(FAIR_DICE);
@@ -131,6 +136,7 @@
     let colors = $state(["red", "blue", "green"]);
 
     let timer = $state(false);
+
     function startTimer() {
         timer = true;
         if (turnCount === 0) {
@@ -169,98 +175,152 @@
         startTimer();
         turn();
     }
-   </script>
+
+    let showTooltip = $state(false);
+    const deckExplanations = {
+        "Chaos": "Each roll is completely random",
+        "Dice Deck": "Uses a deck of all possible rolls (36)",
+        "Balanced": "Uses a deck, but resets after (24) to mix it up",
+        "Double Deck": "Combines two decks of all possible rolls (72), an average game length",
+    };
+</script>
 
 <audio src="ding.mp3" bind:this={audio}></audio>
 
-<main class="flex flex-col items-center gap-3 h-lvh bg-gray-200">
-    <h1 class="text-3xl m-6 font-mono font-bold">REAL TIME CATAN</h1>
+<main class="flex flex-col items-center gap-3 bg-gray-200">
+    <h1 class="text-3xl mt-6 font-mono font-bold">REAL TIME CATAN</h1>
+    <a
+        class="text-gray-500 hover:underline"
+        href="https://www.capinski.dev"
+    >
+        by Theodore Capinski
+    </a>
 
     <div
-        id="turnCount"
-        class="w-24 text-center bg-white border border-gray-300 shadow-lg rounded-lg p-4"
+            id="turnCount"
+            class="w-24 text-center bg-white border border-gray-300 shadow-lg rounded-lg p-4"
     >
         Turn: <strong>{turnCount}</strong>
     </div>
 
     <div
-        class="bg-white border border-gray-300 shadow-lg rounded-lg flex flex-col items-center"
+            class="bg-white border border-gray-300 shadow-lg rounded-lg flex flex-col items-center"
     >
         <div class="flex gap-3">
-            <Die bind:this={die1} />
-            <Die bind:this={die2} />
+            <Die bind:this={die1}/>
+            <Die bind:this={die2}/>
         </div>
         <div
-            id="diceTotal"
-            bind:this={diceTotal}
-            class="w-16 text-center bg-white border border-gray-300 shadow-lg rounded-lg p-4 text-2xl"
+                id="diceTotal"
+                bind:this={diceTotal}
+                class="w-16 text-center bg-white border border-gray-300 shadow-lg rounded-lg p-4 text-2xl"
         >
             {total}
         </div>
         <div
-            bind:this={progressBar}
-            class="p-1 bg-blue-600 rounded-lg m-2"
+                bind:this={progressBar}
+                class="p-1 bg-blue-600 rounded-lg m-2"
         ></div>
     </div>
 
     <div
-        id="buttons"
-        class={`${timer ? "scale-125" : ""} transition duration-300`}
+            id="buttons"
+            class={`${timer ? "scale-125" : ""} transition duration-300`}
     >
         <button
-            class={`w-24 p-4 text-center font-bold active:scale-90 hover:brightness-90 border border-gray-300 shadow-lg rounded-lg transition duration-200 ${timer ? "bg-red-100" : "bg-white"}`}
-            onclick={() => (timer ? stopTimer() : startTimer())}
+                class={`w-24 p-4 text-center font-bold active:scale-90 hover:brightness-90 border border-gray-300 shadow-lg rounded-lg transition duration-200 ${timer ? "bg-red-100" : "bg-white"}`}
+                onclick={() => (timer ? stopTimer() : startTimer())}
         >
             {timer ? "Stop" : "Start"}
         </button>
 
         <button
-            class={`w-24 p-4 text-center font-bold active:scale-90 hover:brightness-90 border border-gray-300 shadow-lg rounded-lg transition duration-200 ${timer ? "bg-green-100" : "bg-white"}`}
-            onclick={skipTurn}
+                class={`w-24 p-4 text-center font-bold active:scale-90 hover:brightness-90 border border-gray-300 shadow-lg rounded-lg transition duration-200 ${timer ? "bg-green-100" : "bg-white"}`}
+                onclick={skipTurn}
         >
             Skip >>
         </button>
     </div>
 
     <div
-        id="config"
-        class="grid grid-cols-2 gap-3 w-72 items-center bg-white border border-gray-300 shadow-lg rounded-lg p-4"
+            id="config"
+            class="grid grid-cols-2 gap-3 w-72 items-center bg-white border border-gray-300 shadow-lg rounded-lg p-4"
     >
         <label for="playerOrder" class="text-lg">Player Order</label>
-        <Swatches bind:colors />
+        <Swatches bind:colors/>
 
         <label for="fairDice" class="text-lg">Fair Dice</label>
-        <select id="fairDice"
-                bind:value={FAIR_DICE}
-                class="border border-gray-300 rounded-lg p-1 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
-        >
-
-            {#each diceOptions as option}
-                <option value={option}>
-                    {option}
-                </option>
-            {/each}
-        </select>
+        <div class="flex items-center">
+            <select id="fairDice"
+                    bind:value={FAIR_DICE}
+                    class="border border-gray-300 rounded-lg p-1 -ml-1 text-lg focus:outline-none transition duration-200"
+            >
+                {#each diceOptions as option}
+                    <option value={option}>
+                        {option}
+                    </option>
+                {/each}
+            </select>
+            <div class="relative ml-3">
+                <button
+                        class="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center cursor-pointer bg-gray-100 text-gray-600 hover:text-gray-900 hover:bg-gray-200 focus:outline-none transition duration-100"
+                        aria-label="Dice Explanation"
+                        onclick={() => showTooltip = !showTooltip}
+                        onblur={() => showTooltip = false}
+                >?
+                </button>
+                {#if showTooltip}
+                    <div class="absolute bottom-9 right-0 bg-white border border-gray-300 shadow-lg rounded-lg p-4 w-64 z-10">
+                        <strong> Chaos </strong>
+                        <span>Each roll is completely random</span>
+                        <br>
+                        <strong> Dice Deck </strong>
+                        <span>Uses a deck of all possible rolls (36)</span>
+                        <br>
+                        <strong> Balanced </strong>
+                        <span>Uses a deck, but resets after (24) <a
+                                class="text-blue-500 hover:underline"
+                                href="https://blog.colonist.io/designing-balanced-dice/"
+                                ontouchend={ (e) => {
+                                    // Click the link
+                                    e.preventDefault();
+                                    window.open("https://blog.colonist.io/designing-balanced-dice/", "_blank");
+                                }}
+                                onmousedown={ (e) => {
+                                    // Click the link
+                                    e.preventDefault();
+                                    window.open("https://blog.colonist.io/designing-balanced-dice/", "_blank");
+                                }}
+                        >
+                            to mix it up
+                        </a></span>
+                        <br>
+                        <strong> Double Deck </strong>
+                        <span>Combines two decks of all possible rolls (72), an average game length</span>
+                    </div>
+                {/if}
+            </div>
+        </div>
 
         <label for="turn" class="text-lg">Turn Time</label>
         <input
-            type="number"
-            step="5"
-            bind:value={turnTime}
-            id="turn"
-            class="border border-gray-300 rounded-lg p-2 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                type="number"
+                step="5"
+                bind:value={turnTime}
+                id="turn"
+                class="border border-gray-300 rounded-lg p-2 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
         />
     </div>
 
     <div
-        id="deckLog"
-        class="bg-white border border-gray-300 shadow-lg rounded-lg p-4"
+            id="deckLog"
+            class="bg-white border border-gray-300 shadow-lg rounded-lg p-4"
     >
         Reveal Log: &nbsp;
         <input
-            type="checkbox"
-            bind:checked={revealLog}
-            class="w-6 h-6 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                type="checkbox"
+                bind:checked={revealLog}
+                class="w-6 h-6 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
         />
 
         {#if revealLog}

@@ -2,14 +2,16 @@
     import Die from "$lib/Die.svelte";
     import { Interval } from "$lib/Timer";
     import { onMount } from "svelte";
+    import Swatches from "$lib/Swatches.svelte";
 
     let die1: Die, die2: Die;
     let dice: DieValue[] = $state([0, 0] as unknown as DieValue[]);
     let total = $state(0);
     let turnCount = $state(0);
-    let FAIR_DICE = $state(true);
+    let sevens = $state(0);
+    let FAIR_DICE = $state("Balanced");
+    const diceOptions = ["Chaos", "Balanced", "Double Deck", "Deck"];
     const CONFIG = $state({
-        fair: true,
         turn: 5,
     });
     let turnTime = $state(CONFIG.turn);
@@ -24,6 +26,9 @@
                 navigator.wakeLock.request("screen").then((lock) => {
                     wakeLock = lock;
                 });
+                console.log("Wake lock acquired");
+            } else {
+                console.log("Wave lock not available");
             }
         } catch (error) {
             console.error("Wake lock request failed:", error);
@@ -51,27 +56,57 @@
     let audio: HTMLAudioElement;
     let revealLog = $state(false);
 
-    const deck: DieValue[][] = $state([]);
-    function createDeck() {
-        for (let i = 1; i <= 6; i++)
-            for (let j = 1; j <= 6; j++) deck.push([i, j] as DieValue[]);
+    let Deck: DieValue[][] = $derived(createDeck(FAIR_DICE));
+    function createDeck(type: string) {
+        let deck = [];
+        const randDie = () => ((Math.random() * 6 + 1) | 0)
+        switch (type) {
+            case "Chaos":
+                deck.push([randDie(), randDie()]);
+                break;
+            case "Balanced":
+                // Create deck, shuffle, then select only first 24
+                for (let i = 1; i <= 6; i++)
+                    for (let j = 1; j <= 6; j++)
+                        deck.push([i, j]);
+                deck.sort(() => Math.random() - 0.5);
+                deck.splice(24);
+                break;
+            case "Double Deck":
+                for (let i = 1; i <= 6; i++)
+                    for (let j = 1; j <= 6; j++)
+                        deck.push([i, j], [i, j])
+                deck.sort(() => Math.random() - 0.5);
+                break;
+            case "Deck":
+                for (let i = 1; i <= 6; i++)
+                    for (let j = 1; j <= 6; j++)
+                        deck.push([i, j])
+                break;
+        }
+        console.log("Deck created:", type);
+        return deck as DieValue[][];
     }
     const deckLog: DieValue[][] = $state([]);
+
+    // // Effect: create deck on FAIR_DICE change
+    // $effect(() => {
+    //     console.log("FAIR_DICE changed to", FAIR_DICE);
+    //     if (FAIR_DICE) {
+    //         createDeck();
+    //     }
+    // });
 
     async function sleep(ms: number) {
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
+    let diceTotal: HTMLElement;
     async function rollDice() {
-        if (deck.length === 0) createDeck();
 
-        if (FAIR_DICE)
-            dice = deck.splice((Math.random() * deck.length) | 0, 1)[0];
-        else
-            dice = [
-                (Math.random() * 6 + 1) | 0,
-                (Math.random() * 6 + 1) | 0,
-            ] as DieValue[];
+        if (Deck.length === 0) Deck = createDeck(FAIR_DICE);
+
+        dice = Deck.pop()!;
         die1.rollDie(dice[0]);
         die2.rollDie(dice[1]);
         deckLog.push(dice);
@@ -81,12 +116,19 @@
         await sleep(die1.ROLL_TIME);
 
         total = dice[0] + dice[1];
-        if (dice[0] + dice[1] == 7) stopTimer();
+        if (dice[0] + dice[1] == 7) {
+            diceTotal.style.backgroundColor = colors[sevens++ % colors.length];
+            diceTotal.style.opacity = "0.8";
+            diceTotal.style.color = "white";
+            stopTimer();
+        }
 
         if (timer) progressAnimation.play();
 
         if (turnCount === 1 && timer) startTimer();
     }
+
+    let colors = $state(["red", "blue", "green"]);
 
     let timer = $state(false);
     function startTimer() {
@@ -96,6 +138,7 @@
             return;
         }
 
+        diceTotal.style = "";
         progressAnimation.play();
         wakeLockRequest();
         interval.start();
@@ -126,7 +169,7 @@
         startTimer();
         turn();
     }
-</script>
+   </script>
 
 <audio src="ding.mp3" bind:this={audio}></audio>
 
@@ -149,6 +192,7 @@
         </div>
         <div
             id="diceTotal"
+            bind:this={diceTotal}
             class="w-16 text-center bg-white border border-gray-300 shadow-lg rounded-lg p-4 text-2xl"
         >
             {total}
@@ -180,15 +224,23 @@
 
     <div
         id="config"
-        class="grid grid-cols-2 gap-3 w-56 items-center bg-white border border-gray-300 shadow-lg rounded-lg p-4"
+        class="grid grid-cols-2 gap-3 w-72 items-center bg-white border border-gray-300 shadow-lg rounded-lg p-4"
     >
+        <label for="playerOrder" class="text-lg">Player Order</label>
+        <Swatches bind:colors />
+
         <label for="fairDice" class="text-lg">Fair Dice</label>
-        <input
-            type="checkbox"
-            bind:checked={FAIR_DICE}
-            id="fairDice"
-            class="w-6 h-6 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-        />
+        <select id="fairDice"
+                bind:value={FAIR_DICE}
+                class="border border-gray-300 rounded-lg p-1 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+        >
+
+            {#each diceOptions as option}
+                <option value={option}>
+                    {option}
+                </option>
+            {/each}
+        </select>
 
         <label for="turn" class="text-lg">Turn Time</label>
         <input

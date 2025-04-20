@@ -96,10 +96,11 @@ export class Timer {
 
 export class Interval extends Timer {
 	protected intervalPaused = false;
-	protected intervalDelay = 0;
-	constructor (time: number, callback: Function) {
+	protected intervalDelay;
+	constructor (time: number, callback: Function, delay = 0) {
 		super(time, callback);
 		this.keyword = 'Interval';
+		this.intervalDelay = delay;
 	}
 	start () {
 		if (this.running) {

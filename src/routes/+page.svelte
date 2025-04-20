@@ -4,22 +4,27 @@
     import {onMount} from "svelte";
     import Swatches from "$lib/Swatches.svelte";
 
+    // Dice Setup
     let die1: Die, die2: Die;
     let dice: DieValue[] = $state([0, 0] as unknown as DieValue[]);
-    let total = $state(0);
-    let turnCount = $state(0);
-    let sevens = $state(0);
-    let FAIR_DICE = $state("Balanced");
-    const diceOptions = ["Chaos", "Dice Deck", "Balanced", "Double Deck"];
-    const CONFIG = $state({
-        turn: 5,
-    });
-    let turnTime = $state(CONFIG.turn);
-    let interval = new Interval(CONFIG.turn * 1000, turn);
-    interval.setDelay(1500);
+    let total = $state(0), sevens = $state(0);
+    let deckType = $state("Balanced");
+    let Deck: DieValue[][] = $derived(createDeck(deckType));
 
-    // Wake lock
+    // Timer Setup
+    const CONFIG = $state({ turn: 5, });    // Why is this here?
+    let turnTime = $state(CONFIG.turn), turnCount = $state(0);
+    let interval = new Interval(CONFIG.turn * 1000, turn, 1500);
     let wakeLock: WakeLockSentinel | null = null;
+
+    // Elements
+    let audio: HTMLAudioElement;
+    let progressBar: HTMLDivElement;
+    let progressAnimation: Animation;
+    let diceTotal: HTMLElement;
+    let showTooltip = $state(false);
+    let revealLog = $state(false);
+
 
     function wakeLockRequest() {
         try {
@@ -45,8 +50,6 @@
     }
 
     // Progress Bar
-    let progressBar: HTMLDivElement;
-    let progressAnimation: Animation;
     onMount(() => {
         progressAnimation = progressBar.animate(
             [{width: "0"}, {width: "100%"}],
@@ -54,11 +57,6 @@
         );
         progressAnimation.pause();
     });
-
-    let audio: HTMLAudioElement;
-    let revealLog = $state(false);
-
-    let Deck: DieValue[][] = $derived(createDeck(FAIR_DICE));
 
     function createDeck(type: string) {
         let deck = [];
@@ -105,18 +103,15 @@
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
-    let diceTotal: HTMLElement;
-
     async function rollDice() {
-
-        if (Deck.length === 0) Deck = createDeck(FAIR_DICE);
+        if (Deck.length === 0) Deck = createDeck(deckType);
 
         dice = Deck.pop()!;
         die1.rollDie(dice[0]);
         die2.rollDie(dice[1]);
         deckLog.push(dice);
 
-        total = "--" as unknown as number;
+        total = "--" as unknown as number;      // Adds some suspense
         progressAnimation.pause();
         await sleep(die1.ROLL_TIME);
 
@@ -129,7 +124,6 @@
         }
 
         if (timer) progressAnimation.play();
-
         if (turnCount === 1 && timer) startTimer();
     }
 
@@ -175,14 +169,6 @@
         startTimer();
         turn();
     }
-
-    let showTooltip = $state(false);
-    const deckExplanations = {
-        "Chaos": "Each roll is completely random",
-        "Dice Deck": "Uses a deck of all possible rolls (36)",
-        "Balanced": "Uses a deck, but resets after (24) to mix it up",
-        "Double Deck": "Combines two decks of all possible rolls (72), an average game length",
-    };
 </script>
 
 <audio src="ding.mp3" bind:this={audio}></audio>
@@ -252,10 +238,10 @@
         <label for="fairDice" class="text-lg">Fair Dice</label>
         <div class="flex items-center">
             <select id="fairDice"
-                    bind:value={FAIR_DICE}
+                    bind:value={deckType}
                     class="border border-gray-300 rounded-lg p-1 -ml-1 text-lg focus:outline-none transition duration-200"
             >
-                {#each diceOptions as option}
+                {#each ["Chaos", "Dice Deck", "Balanced", "Double Deck"] as option}
                     <option value={option}>
                         {option}
                     </option>
@@ -267,36 +253,18 @@
                         aria-label="Dice Explanation"
                         onclick={() => showTooltip = !showTooltip}
                         onblur={() => showTooltip = false}
-                >?
-                </button>
+                >?</button>
                 {#if showTooltip}
                     <div class="absolute bottom-9 right-0 bg-white border border-gray-300 shadow-lg rounded-lg p-4 w-64 z-10">
-                        <strong> Chaos </strong>
-                        <span>Each roll is completely random</span>
-                        <br>
-                        <strong> Dice Deck </strong>
-                        <span>Uses a deck of all possible rolls (36)</span>
-                        <br>
-                        <strong> Balanced </strong>
-                        <span>Uses a deck, but resets after (24) <a
+                        <strong> Chaos </strong> <span>Each roll is completely random</span> <br>
+                        <strong> Dice Deck </strong> <span>Uses a deck of all possible rolls (36)</span> <br>
+                        <strong> Balanced </strong> <span>Uses a deck, but resets after (24) <a
                                 class="text-blue-500 hover:underline"
                                 href="https://blog.colonist.io/designing-balanced-dice/"
-                                ontouchend={ (e) => {
-                                    // Click the link
-                                    e.preventDefault();
-                                    window.open("https://blog.colonist.io/designing-balanced-dice/", "_blank");
-                                }}
-                                onmousedown={ (e) => {
-                                    // Click the link
-                                    e.preventDefault();
-                                    window.open("https://blog.colonist.io/designing-balanced-dice/", "_blank");
-                                }}
-                        >
-                            to mix it up
-                        </a></span>
-                        <br>
-                        <strong> Double Deck </strong>
-                        <span>Combines two decks of all possible rolls (72), an average game length</span>
+                                ontouchend  = { () => window.open("https://blog.colonist.io/designing-balanced-dice/", "_blank")}
+                                onmousedown = { () => window.open("https://blog.colonist.io/designing-balanced-dice/", "_blank")}
+                        >to mix it up</a></span> <br>
+                        <strong> Double Deck </strong> <span>Combines two decks (72) for an even spread over an average game</span>
                     </div>
                 {/if}
             </div>
@@ -312,10 +280,7 @@
         />
     </div>
 
-    <div
-            id="deckLog"
-            class="bg-white border border-gray-300 shadow-lg rounded-lg p-4"
-    >
+    <div id="deckLog" class="bg-white border border-gray-300 shadow-lg rounded-lg p-4">
         Reveal Log: &nbsp;
         <input
                 type="checkbox"

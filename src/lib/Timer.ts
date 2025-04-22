@@ -122,7 +122,7 @@ export class Timer {
 }
 
 export class Interval extends Timer {
-	public intervalPaused = false; //TODO Make protected
+	protected intervalPaused = false;
 	protected onIntervalDelay = false;
 	protected intervalDelay;
 	constructor (time: number, callback: Function, delay = 0) {

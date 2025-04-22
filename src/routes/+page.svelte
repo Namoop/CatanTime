@@ -3,7 +3,7 @@
     import {Interval, Timer} from "$lib/Timer";
     import {onMount} from "svelte";
     import Swatches from "$lib/Swatches.svelte";
-    import Audio, {playSound, playBuildUp, pauseBuildUp, stopBuildUp} from "$lib/Audio.svelte";
+    import Audio from "$lib/Audio.svelte";
     import SoundSwitch from "$lib/SoundSwitch.svelte";
 
     // Dice Setup
@@ -18,13 +18,7 @@
     let turnTime = $state(CONFIG.turn), turnCount = $state(0);
     let wakeLock: WakeLockSentinel | null = null;
     let interval = new Interval(CONFIG.turn * 1000, turn, 1500);
-    let soundTimer = new Timer(CONFIG.turn * 1000 - 4999, playBuildUp);
-    interval.on("pause", () => {
-        pauseBuildUp()
-    })
-    interval.on("resume", () => {
-        soundTimer.isRunning() || playBuildUp()
-    }) // Resumes the sound only if it should be playing
+    let soundTimer: Timer;
 
     // Elements
     let audio: Audio;
@@ -34,7 +28,7 @@
     let showTooltip = $state(false);
     let revealLog = $state(false);
 
-    function wakeLockRequest() {
+    function wakeLockRequest() { // TODO test on mobile
         try {
             if ("wakeLock" in navigator) {
                 navigator.wakeLock.request("screen").then((lock) => {
@@ -66,14 +60,13 @@
         progressAnimation.pause();
         window.addEventListener("keydown", handleKeydown);
 
-        soundTimer = new Timer(CONFIG.turn * 1000 - 4998, audio.playBuildUp);
+        soundTimer = new Timer(CONFIG.turn * 1000 - 4990, audio.playBuildUp);
         interval.on("pause", () => {
             audio.pauseBuildUp()
         })
         interval.on("resume", () => {
             interval.getTimeRemaining() < 5000 && audio.playBuildUp()
         }) // Resumes the sound only if it should be playing
-
     });
 
     function createDeck(type: string) {
@@ -122,14 +115,9 @@
 
         total = "--" as unknown as number;                   // Adds some suspense
         progressAnimation.pause();
-        await sleep(die1.ROLL_TIME);
-        if (CONFIG.turn >= 5) soundTimer.start(); // Build up only plays if there is enough time
-        stopBuildUp();
-        console.log(interval.getTimeRemaining());
-        await sleep(die1.ROLL_TIME + 1);                     // Unexplainable things happen without this 1ms
-        if (CONFIG.turn >= 5 && timer) soundTimer.start();   // Build up only plays if there is enough time
+        await sleep(die1.ROLL_TIME - 5);                     // Needs to catch a 7 during the delay or everything breaks i guess
+        if (CONFIG.turn >= 5 && timer) soundTimer.start();   // Build up only plays if there is at least 5 seconds
         audio.stopBuildUp();
-        console.log("Roll", interval.getTimeRemaining());
 
         total = dice[0] + dice[1];
         if (dice[0] + dice[1] == 7) {
@@ -157,7 +145,7 @@
         interval.start();
 
         diceTotal.style = "";
-        progressAnimation.play();
+        if (interval.isRunning()) progressAnimation.play();
         wakeLockRequest();
     }
 
@@ -177,9 +165,8 @@
         CONFIG.turn = turnTime;
         interval.setInitialTime(CONFIG.turn * 1000);
         interval.setTime(CONFIG.turn * 1000);
-        soundTimer.setInitialTime(CONFIG.turn * 1000 - 4999);
-        soundTimer.setTime(CONFIG.turn * 1000 - 4999);
-        soundTimer.setInitialTime(CONFIG.turn * 1000 - 4998);
+        soundTimer.setInitialTime(CONFIG.turn * 1000 - 4990);
+        soundTimer.setTime(CONFIG.turn * 1000 - 4990);
 
         progressAnimation.cancel();
         progressAnimation.playbackRate = 5 / CONFIG.turn; // 5 is the default turn time

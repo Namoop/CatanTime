@@ -27,6 +27,7 @@
     }) // Resumes the sound only if it should be playing
 
     // Elements
+    let audio: Audio;
     let progressBar: HTMLDivElement;
     let progressAnimation: Animation;
     let diceTotal: HTMLElement;
@@ -39,7 +40,7 @@
                 navigator.wakeLock.request("screen").then((lock) => {
                     wakeLock = lock;
                 });
-                console.log("Wake lock (allegedly) acquired");
+                // console.log("Wake lock (allegedly) acquired");
             } else {
                 console.log("Wave lock not available");
             }
@@ -64,6 +65,15 @@
         );
         progressAnimation.pause();
         window.addEventListener("keydown", handleKeydown);
+
+        soundTimer = new Timer(CONFIG.turn * 1000 - 4998, audio.playBuildUp);
+        interval.on("pause", () => {
+            audio.pauseBuildUp()
+        })
+        interval.on("resume", () => {
+            interval.getTimeRemaining() < 5000 && audio.playBuildUp()
+        }) // Resumes the sound only if it should be playing
+
     });
 
     function createDeck(type: string) {
@@ -110,12 +120,16 @@
         die2.rollDie(dice[1]);
         deckLog.push(dice);
 
-        total = "--" as unknown as number;      // Adds some suspense
+        total = "--" as unknown as number;                   // Adds some suspense
         progressAnimation.pause();
         await sleep(die1.ROLL_TIME);
         if (CONFIG.turn >= 5) soundTimer.start(); // Build up only plays if there is enough time
         stopBuildUp();
         console.log(interval.getTimeRemaining());
+        await sleep(die1.ROLL_TIME + 1);                     // Unexplainable things happen without this 1ms
+        if (CONFIG.turn >= 5 && timer) soundTimer.start();   // Build up only plays if there is enough time
+        audio.stopBuildUp();
+        console.log("Roll", interval.getTimeRemaining());
 
         total = dice[0] + dice[1];
         if (dice[0] + dice[1] == 7) {
@@ -156,7 +170,7 @@
     }
 
     function turn() {
-        if (turnCount !== 0) playSound()
+        if (turnCount !== 0) audio.playSound()
         rollDice();
 
         turnCount++;
@@ -165,6 +179,7 @@
         interval.setTime(CONFIG.turn * 1000);
         soundTimer.setInitialTime(CONFIG.turn * 1000 - 4999);
         soundTimer.setTime(CONFIG.turn * 1000 - 4999);
+        soundTimer.setInitialTime(CONFIG.turn * 1000 - 4998);
 
         progressAnimation.cancel();
         progressAnimation.playbackRate = 5 / CONFIG.turn; // 5 is the default turn time
@@ -175,7 +190,7 @@
         interval.reset();
         soundTimer.pause();
         soundTimer.reset();
-        stopBuildUp();
+        audio.stopBuildUp();
         startTimer();
         turn();
     }
@@ -189,8 +204,7 @@
     }
 </script>
 
-
-<Audio/>
+<Audio bind:this={audio}/>
 
 <main class="flex flex-col items-center min-h-full gap-3">
     <h1 class="text-3xl mt-6 font-mono font-bold">REAL TIME CATAN</h1>
@@ -226,6 +240,7 @@
                 bind:this={progressBar}
                 class="p-1 bg-blue-600 rounded-lg m-2"
         ></div>
+        <pre id="debug"></pre>
     </div>
 
     <div
@@ -235,6 +250,7 @@
         <button
                 class={`w-24 p-4 text-center font-bold active:scale-90 hover:brightness-90 border border-gray-300 shadow-lg rounded-lg transition duration-200 ${timer ? "bg-red-100" : "bg-white"}`}
                 onclick={() => (timer ? stopTimer() : startTimer())}
+                title="Starts or pauses the timer"
         >
             {timer ? "Stop" : "Start"}
         </button>
@@ -242,8 +258,9 @@
         <button
                 class={`w-24 p-4 text-center font-bold active:scale-90 hover:brightness-90 border border-gray-300 shadow-lg rounded-lg transition duration-200 ${timer ? "bg-green-100" : "bg-white"}`}
                 onclick={skipTurn}
+                title="Skips the waiting time and rolls the dice"
         >
-            Skip >>
+            Next >>
         </button>
     </div>
 

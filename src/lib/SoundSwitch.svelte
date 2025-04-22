@@ -3,12 +3,11 @@
     import MdiNotificationsActive from 'virtual:icons/mdi/notifications-active';
     import LucideDrum from 'virtual:icons/lucide/drum';
 
-    let pref = $state(0);
+    let pref = $state(2);
 
     const SCALE = 29;
 
     function togglePref() {
-        console.log(pref);
         pref = (pref + 1) % 3;
     }
 

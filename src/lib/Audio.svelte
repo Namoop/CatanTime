@@ -1,4 +1,4 @@
-<script module lang="ts">
+<script lang="ts">
     import { getPref } from './SoundSwitch.svelte';
 
     let ding: HTMLAudioElement;

@@ -21,6 +21,7 @@ This can be turned off if you prefer, but I will judge you.
 - Reset timer
 - Sound effects on roll
 - Visual effects on roll
+- Doesn't explode (most devices)
 
 
 ## Developing
@@ -36,7 +37,9 @@ npm run dev -- --open
 
 ## Attributions
 
-- [Svelte](https://svelte.dev)
-- [Dice](https://codepen.io/abirana/pen/rNMLrPB)
+- [Svelte](https://svelte.dev) :3
+- [Dice](https://codepen.io/abirana/pen/rNMLrPB) (seeing this inspired the whole project, actually!)
 - [Chime](https://pixabay.com/users/lucadialessandro-25927643/)
+- [Whoosh Drum](https://pixabay.com/sound-effects/whoosh-drum-hits-169007/)
+- [War Drum Loop](https://pixabay.com/sound-effects/war-drum-loop-103870/)
 - [Favicon](https://www.flaticon.com/free-icons/dices) by Xinh Studio

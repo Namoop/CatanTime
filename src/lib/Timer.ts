@@ -122,7 +122,8 @@ export class Timer {
 }
 
 export class Interval extends Timer {
-	protected intervalPaused = false;
+	public intervalPaused = false; //TODO Make protected
+	protected onIntervalDelay = false;
 	protected intervalDelay;
 	constructor (time: number, callback: Function, delay = 0) {
 		super(time, callback);
@@ -134,26 +135,34 @@ export class Interval extends Timer {
 			console.warn(this.keyword + ' is already running');
 			return;
 		}
+		if (this.onIntervalDelay) {
+			console.warn(this.keyword + ' is paused for the minimum interval delay of ' + this.intervalDelay + 'ms');
+			this.intervalPaused = false;
+			return;
+		}
 		this.intervalPaused = false;
 		this.running = true;
 		this.last_start = Date.now();
 		this.timeout = setTimeout(
 			() => {
 				this.running = false;
+				this.onIntervalDelay = true;
 				this.callback();
 				setTimeout(() => {
+					this.onIntervalDelay = false;
 					if (!this.intervalPaused) {
+						this.time_remaining = this.initial_time;
 						this.start();
 					}
 				}, this.intervalDelay);
 			}, this.time_remaining);
 	}
 	pause() {
-		super.pause();
-		if (!this.running) {
+		if (this.onIntervalDelay) {
 			this.intervalPaused = true;
 			return;
 		}
+		super.pause();
 	}
 	resume() {
 		this.intervalPaused = false;

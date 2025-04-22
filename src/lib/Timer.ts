@@ -1,8 +1,12 @@
+type TimerEvent = 'pause' | 'resume';
+
 export class Timer {
 	protected time_remaining: number;
 	protected initial_time: number;
 	protected running: boolean;
 	protected callback: Function;
+	protected onPause?: Function;
+	protected onResume?: Function;
 	protected last_start: number;
 	protected timeout: number;
 	protected keyword: string;
@@ -20,6 +24,9 @@ export class Timer {
 			console.warn(this.keyword + ' is already running');
 			return;
 		}
+		if (this.getTimeRemaining() >= 0) {
+			this.onResume && this.onResume();
+		}
 		this.running = true;
 		this.last_start = Date.now();
 		this.timeout = setTimeout(() => {
@@ -29,13 +36,14 @@ export class Timer {
 		, this.time_remaining);
 	}
 	pause () {
-		if (!this.running) {
+		if (!this.running && this.getTimeRemaining() != this.initial_time) {
 			console.warn(this.keyword + ' is not running');
 			return;
 		}
 		this.running = false;
 		clearTimeout(this.timeout);
 		this.time_remaining -= Date.now() - this.last_start;
+		this.onPause && this.onPause();
 	}
 	resume () {
 		if (this.running) {
@@ -61,9 +69,20 @@ export class Timer {
 		this.running = false;
 		clearTimeout(this.timeout);
 	}
-	setTime (time: number) {
-		this.time_remaining = time;
+	setInitialTime (time: number) {
 		this.initial_time = time;
+	}
+	setTime (time: number) {
+		let isRunning = this.running;
+		if (isRunning) this.pause()
+		this.time_remaining = time;
+		if (isRunning) this.resume();
+	}
+	subtractTime (time: number) {
+		this.setTime(Math.max(0, this.getTimeRemaining() - time));
+	}
+	addTime (time: number) {
+		this.setTime(this.getTimeRemaining() + time);
 	}
 	getTimeRemaining () {
 		if (this.running) {
@@ -79,6 +98,14 @@ export class Timer {
 	}
 	setName (name: string) {
 		this.keyword = name;
+	}
+	on(event: TimerEvent, callback: Function) {
+		if (event === 'pause') {
+			this.onPause = callback;
+		}
+		if (event === 'resume') {
+			this.onResume = callback;
+		}
 	}
 	static Timers: Timer[] = [];
 	static GetTimersByName (name: string) {
@@ -122,17 +149,15 @@ export class Interval extends Timer {
 			}, this.time_remaining);
 	}
 	pause() {
-		if (!this.running && this.getTimeRemaining() != this.initial_time) {
-			console.warn(this.keyword + ' is not running');
-			return;
-		}
+		super.pause();
 		if (!this.running) {
 			this.intervalPaused = true;
 			return;
 		}
-		this.running = false;
-		clearTimeout(this.timeout);
-		this.time_remaining -= Date.now() - this.last_start;
+	}
+	resume() {
+		this.intervalPaused = false;
+		super.resume();
 	}
 	setDelay (delay: number) {
 		this.intervalDelay = delay;

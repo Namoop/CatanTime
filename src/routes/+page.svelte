@@ -1,8 +1,10 @@
 <script lang="ts">
     import Die from "$lib/Die.svelte";
-    import {Interval} from "$lib/Timer";
+    import {Interval, Timer} from "$lib/Timer";
     import {onMount} from "svelte";
     import Swatches from "$lib/Swatches.svelte";
+    import Audio, {playSound, playBuildUp, pauseBuildUp, stopBuildUp} from "$lib/Audio.svelte";
+    import SoundSwitch from "$lib/SoundSwitch.svelte";
 
     // Dice Setup
     let die1: Die, die2: Die;
@@ -12,19 +14,24 @@
     let Deck: DieValue[][] = $derived(createDeck(deckType));
 
     // Timer Setup
-    const CONFIG = $state({ turn: 5, });    // Why is this here?
+    const CONFIG = $state({turn: 5,});    // Why is this here?
     let turnTime = $state(CONFIG.turn), turnCount = $state(0);
-    let interval = new Interval(CONFIG.turn * 1000, turn, 1500);
     let wakeLock: WakeLockSentinel | null = null;
+    let interval = new Interval(CONFIG.turn * 1000, turn, 1500);
+    let soundTimer = new Timer(CONFIG.turn * 1000 - 4999, playBuildUp);
+    interval.on("pause", () => {
+        pauseBuildUp()
+    })
+    interval.on("resume", () => {
+        soundTimer.isRunning() || playBuildUp()
+    }) // Resumes the sound only if it should be playing
 
     // Elements
-    let audio: HTMLAudioElement;
     let progressBar: HTMLDivElement;
     let progressAnimation: Animation;
     let diceTotal: HTMLElement;
     let showTooltip = $state(false);
     let revealLog = $state(false);
-
 
     function wakeLockRequest() {
         try {
@@ -32,7 +39,7 @@
                 navigator.wakeLock.request("screen").then((lock) => {
                     wakeLock = lock;
                 });
-                console.log("Wake lock acquired");
+                console.log("Wake lock (allegedly) acquired");
             } else {
                 console.log("Wave lock not available");
             }
@@ -56,6 +63,7 @@
             {duration: CONFIG.turn * 1000, iterations: Infinity},
         );
         progressAnimation.pause();
+        window.addEventListener("keydown", handleKeydown);
     });
 
     function createDeck(type: string) {
@@ -66,7 +74,7 @@
                 deck.push([randDie(), randDie()]);
                 break;
             case "Balanced":
-                // Create deck, shuffle, then select only first 24
+                // Create the deck, shuffle, then select only the first 24
                 for (let i = 1; i <= 6; i++)
                     for (let j = 1; j <= 6; j++)
                         deck.push([i, j]);
@@ -85,19 +93,10 @@
                         deck.push([i, j])
                 break;
         }
-        console.log("Deck created:", type);
         return deck as DieValue[][];
     }
 
     const deckLog: DieValue[][] = $state([]);
-
-    // // Effect: create deck on FAIR_DICE change
-    // $effect(() => {
-    //     console.log("FAIR_DICE changed to", FAIR_DICE);
-    //     if (FAIR_DICE) {
-    //         createDeck();
-    //     }
-    // });
 
     async function sleep(ms: number) {
         return new Promise((resolve) => setTimeout(resolve, ms));
@@ -114,6 +113,9 @@
         total = "--" as unknown as number;      // Adds some suspense
         progressAnimation.pause();
         await sleep(die1.ROLL_TIME);
+        if (CONFIG.turn >= 5) soundTimer.start(); // Build up only plays if there is enough time
+        stopBuildUp();
+        console.log(interval.getTimeRemaining());
 
         total = dice[0] + dice[1];
         if (dice[0] + dice[1] == 7) {
@@ -137,27 +139,32 @@
             turn();
             return;
         }
+        if (turnCount != 1) soundTimer.start();
+        interval.start();
 
         diceTotal.style = "";
         progressAnimation.play();
         wakeLockRequest();
-        interval.start();
     }
 
     function stopTimer() {
         timer = false;
         interval.pause();
+        if (soundTimer.isRunning()) soundTimer.pause();
         wakeLockRelease();
         progressAnimation.pause();
     }
 
     function turn() {
-        audio.play();
+        if (turnCount !== 0) playSound()
         rollDice();
 
         turnCount++;
         CONFIG.turn = turnTime;
+        interval.setInitialTime(CONFIG.turn * 1000);
         interval.setTime(CONFIG.turn * 1000);
+        soundTimer.setInitialTime(CONFIG.turn * 1000 - 4999);
+        soundTimer.setTime(CONFIG.turn * 1000 - 4999);
 
         progressAnimation.cancel();
         progressAnimation.playbackRate = 5 / CONFIG.turn; // 5 is the default turn time
@@ -166,18 +173,30 @@
     function skipTurn() {
         interval.pause();
         interval.reset();
+        soundTimer.pause();
+        soundTimer.reset();
+        stopBuildUp();
         startTimer();
         turn();
     }
+
+    // If the space bar is pressed, toggle the timer
+    function handleKeydown(event: KeyboardEvent) {
+        if (event.code === "Space") {
+            event.preventDefault();
+            timer ? stopTimer() : startTimer();
+        }
+    }
 </script>
 
-<audio src="ding.mp3" bind:this={audio}></audio>
+
+<Audio/>
 
 <main class="flex flex-col items-center min-h-full gap-3">
     <h1 class="text-3xl mt-6 font-mono font-bold">REAL TIME CATAN</h1>
     <a
-        class="text-gray-500 hover:underline"
-        href="https://www.capinski.dev"
+            class="text-gray-500 hover:underline"
+            href="https://www.capinski.dev"
     >
         by Theodore Capinski
     </a>
@@ -232,14 +251,17 @@
             id="config"
             class="grid grid-cols-2 gap-3 w-72 items-center bg-white border border-gray-300 shadow-lg rounded-lg p-4"
     >
-        <label for="playerOrder" class="text-lg">Player Order</label>
+        <label for="playerOrder" class="text-lg cursor-help" title="Settlement Placement Order and Robber Order">Player Order</label>
         <Swatches bind:colors/>
 
-        <label for="fairDice" class="text-lg">Fair Dice</label>
-        <div class="flex items-center">
+        <label for="sounds" class="text-lg cursor-help" title="Sounds: Mute, Ding, or Drumroll with Build-up">Sounds</label>
+        <SoundSwitch/>
+
+        <label for="fairDice" class="text-lg cursor-help" title="The fair dice deck determines how random the rolls are">Fair Dice</label>
+        <div class="flex items-center relative">
             <select id="fairDice"
                     bind:value={deckType}
-                    class="border border-gray-300 rounded-lg p-1 -ml-1 text-lg focus:outline-none transition duration-200"
+                    class="border border-gray-300 bg-gray-100 rounded-lg p-1 h-10 w-full text-lg focus:outline-none transition duration-200"
             >
                 {#each ["Chaos", "Dice Deck", "Balanced", "Double Deck"] as option}
                     <option value={option}>
@@ -247,37 +269,83 @@
                     </option>
                 {/each}
             </select>
-            <div class="relative ml-3">
+            <div class="absolute -right-14">
                 <button
                         class="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center cursor-pointer bg-gray-100 text-gray-600 hover:text-gray-900 hover:bg-gray-200 focus:outline-none transition duration-100"
                         aria-label="Dice Explanation"
                         onclick={() => showTooltip = !showTooltip}
                         onblur={() => showTooltip = false}
-                >?</button>
+                >?
+                </button>
                 {#if showTooltip}
                     <div class="absolute bottom-9 right-0 bg-white border border-gray-300 shadow-lg rounded-lg p-4 w-64 z-10">
                         <strong> Chaos </strong> <span>Each roll is completely random</span> <br>
                         <strong> Dice Deck </strong> <span>Uses a deck of all possible rolls (36)</span> <br>
                         <strong> Balanced </strong> <span>Uses a deck, but resets after (24) <a
-                                class="text-blue-500 hover:underline"
-                                href="https://blog.colonist.io/designing-balanced-dice/"
-                                ontouchend  = { () => window.open("https://blog.colonist.io/designing-balanced-dice/", "_blank")}
-                                onmousedown = { () => window.open("https://blog.colonist.io/designing-balanced-dice/", "_blank")}
-                        >to mix it up</a></span> <br>
+                            class="text-blue-500 hover:underline"
+                            href="https://blog.colonist.io/designing-balanced-dice/"
+                            ontouchend={ () => window.open("https://blog.colonist.io/designing-balanced-dice/", "_blank")}
+                            onmousedown={ () => window.open("https://blog.colonist.io/designing-balanced-dice/", "_blank")}
+                    >to mix it up</a></span> <br>
                         <strong> Double Deck </strong> <span>Combines two decks (72) for an even spread over an average game</span>
                     </div>
                 {/if}
             </div>
         </div>
 
-        <label for="turn" class="text-lg">Turn Time</label>
+        <label for="turn" class="text-lg cursor-help" title="Strongly Recommended Turn Time: 30s">Turn Time</label>
         <input
                 type="number"
                 step="5"
                 bind:value={turnTime}
                 id="turn"
-                class="border border-gray-300 rounded-lg p-2 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                class="border border-gray-300 rounded-lg p-2 text-lg h-10 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-center"
         />
+    </div>
+
+    <div
+            id="config"
+            class="flex flex-col gap-3 w-72 bg-white border border-gray-300 shadow-lg rounded-lg p-4"
+    >
+        <h2 class="text-xl w-full text-center">Description</h2>
+
+        <details>
+            <summary class="font-bold">Overview</summary>
+            <p>
+                This is a tool for playing Catan in real time.
+                The concept is simple:
+            </p><br>
+            <ul class="list-disc list-inside">
+                <li>There are no turns, the dice are rolled automatically</li>
+                <li>Players can build and trade at any time, including ports</li>
+                <li>The game ends immediately when someone reaches 10 points</li>
+            </ul>
+        </details>
+
+        <details>
+            <summary class="font-bold">Player Order & Robber</summary>
+            <p>
+                To begin, roll a real die for settlement placement order,
+                then use the <strong>Player Order</strong> selector.
+            </p><br>
+            <ul class="list-disc list-inside">
+                <li>The Robber rotates based on this starting player order</li>
+                <li>On a 7, the game pauses; hit start again after the steal</li>
+                <li>You still can lose half your cards. Trade fast!</li>
+            </ul>
+        </details>
+
+        <details>
+            <summary class="font-bold">Development Cards</summary>
+            <p>
+                You can also buy and use development cards as normal.
+            </p><br>
+            <ul class="list-disc list-inside">
+                <li>Pause the game as needed, e.g. knights or monopoly</li>
+                <li>Each person can only play one development card per roll</li>
+                <li>Further, only one knight can be played (by anybody) per roll</li>
+            </ul>
+        </details>
     </div>
 
     <div id="deckLog" class="bg-white border border-gray-300 shadow-lg rounded-lg p-4">

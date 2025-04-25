@@ -81,14 +81,14 @@
                 for (let i = 1; i <= 6; i++)
                     for (let j = 1; j <= 6; j++)
                         deck.push([i, j]);
-                deck.sort(() => Math.random() - 0.5);
+                shuffle(deck);
                 deck.splice(24);
                 break;
             case "Double Deck":
                 for (let i = 1; i <= 6; i++)
                     for (let j = 1; j <= 6; j++)
                         deck.push([i, j], [i, j])
-                deck.sort(() => Math.random() - 0.5);
+                shuffle(deck)
                 break;
             case "Deck":
                 for (let i = 1; i <= 6; i++)
@@ -98,6 +98,27 @@
         }
         return deck as DieValue[][];
     }
+
+    function shuffle<T>(array: T[]): T[] {
+        // https://bost.ocks.org/mike/shuffle/
+
+        let m = array.length, t, i;
+
+        // While there remain elements to shuffle…
+        while (m) {
+
+            // Pick a remaining element…
+            i = Math.floor(Math.random() * m--);
+
+            // And swap it with the current element.
+            t = array[m];
+            array[m] = array[i];
+            array[i] = t;
+        }
+        return array;
+    }
+
+
 
     const deckLog: DieValue[][] = $state([]);
 

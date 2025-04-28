@@ -6,6 +6,7 @@ export class Timer {
 	protected running: boolean;
 	protected callback: Function;
 	protected onPause?: Function;
+	protected paused: boolean;
 	protected onResume?: Function;
 	protected last_start: number;
 	protected timeout: number;
@@ -14,6 +15,7 @@ export class Timer {
 		this.time_remaining = time;
 		this.initial_time = time;
 		this.running = false;
+		this.paused = false;
 		this.callback = callback;
 		this.last_start = 0;
 		this.timeout = 0;
@@ -21,7 +23,7 @@ export class Timer {
 	}
 	start () {
 		if (this.running) {
-			console.warn(this.keyword + ' is already running');
+			console.error(this.keyword + ' is already running');
 			return;
 		}
 		if (this.getTimeRemaining() >= 0) {
@@ -37,32 +39,33 @@ export class Timer {
 	}
 	pause () {
 		if (!this.running && this.getTimeRemaining() != this.initial_time) {
-			console.warn(this.keyword + ' is not running');
+			console.error(this.keyword + ' is not running');
 			return;
 		}
 		this.running = false;
+		this.paused = true;
 		clearTimeout(this.timeout);
 		this.time_remaining -= Date.now() - this.last_start;
 		this.onPause && this.onPause();
 	}
 	resume () {
 		if (this.running) {
-			console.warn(this.keyword + ' is already running');
+			console.error(this.keyword + ' is already running');
 			return;
 		}
 		if (this.time_remaining <= 0) {
-			console.warn(this.keyword + ' has already finished');
+			console.error(this.keyword + ' has already finished');
 			return;
 		}
-		if (this.time_remaining === this.initial_time) {
-			console.warn(this.keyword + ' has not been started yet');
-			return
+		if (!this.paused) {
+			console.error(this.keyword + ' has not been started yet');
+			return;
 		}
 		this.start();
 	}
 	reset () {
 		if (this.running) {
-			console.warn(this.keyword + ' is running');
+			console.error(this.keyword + ' is running');
 			return;
 		}
 		this.time_remaining = this.initial_time;
@@ -111,7 +114,7 @@ export class Timer {
 	static GetTimersByName (name: string) {
 		let timers = this.Timers.filter(timer => timer.keyword === name);
 		if (timers.length === 0) {
-			console.warn('No ' + name + ' found');
+			console.error('No ' + name + ' found');
 			return;
 		}
 		if (timers.length === 1) {
@@ -132,7 +135,7 @@ export class Interval extends Timer {
 	}
 	start () {
 		if (this.running) {
-			console.warn(this.keyword + ' is already running');
+			console.error(this.keyword + ' is already running');
 			return;
 		}
 		if (this.onIntervalDelay) {

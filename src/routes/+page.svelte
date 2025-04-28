@@ -145,7 +145,7 @@
             diceTotal.style.backgroundColor = colors[sevens++ % colors.length];
             diceTotal.style.opacity = "0.8";
             diceTotal.style.color = "white";
-            stopTimer();
+            if (timer) stopTimer();
         }
 
         if (timer) progressAnimation.play();
@@ -194,13 +194,11 @@
     }
 
     function skipTurn() {
-        interval.pause();
-        interval.reset();
-        soundTimer.pause();
+        if (!interval.isRunning()) startTimer();
+        interval.setTime(5);
+        if (soundTimer.isRunning()) soundTimer.pause();
         soundTimer.reset();
         audio.stopBuildUp();
-        startTimer();
-        turn();
     }
 
     // If the space bar is pressed, toggle the timer

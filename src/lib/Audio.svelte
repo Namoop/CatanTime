@@ -26,6 +26,8 @@
         if (getPref() >= 2) {
             drum_loop.pause();
             drum_loop.currentTime = 0;
+            drum_hit.pause();
+            drum_hit.currentTime = 0;
         }
     }
 </script>

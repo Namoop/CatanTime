@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { getPref } from './SoundSwitch.svelte';
+    let { getPref } = $props();
 
     let ding: HTMLAudioElement;
     let drum_loop: HTMLAudioElement;

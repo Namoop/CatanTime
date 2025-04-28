@@ -1,8 +1,21 @@
 <script lang="ts">
 
+    import {onMount} from "svelte";
+
     let { colors = $bindable(["red", "blue", "green"]) } = $props();
     let activeSwatch = $state(-1); // -1 means no active swatch
     const availableColors = ["red", "green", "blue", "white", "yellow", "saddlebrown", "purple", "orange"];
+
+    onMount(() => {
+        // Load player colors from local storage
+        const storedColors = localStorage.getItem('playerColors');
+        if (storedColors) colors = JSON.parse(storedColors);
+
+        $effect(() => {
+            // On color change, store the colors in local storage
+            localStorage.setItem('playerColors', JSON.stringify(colors));
+        })
+    });
 
 </script>
 
@@ -42,7 +55,7 @@
                                 style="background-color: {c};"
                                 aria-label="Select {c}"
                                 title="Select {c}"
-                                onmousedown={(e) => {colors[i] = c;
+                                onmousedown={() => {colors[i] = c;
                                 activeSwatch = -1;
                             }}
                         ></button>
@@ -51,7 +64,7 @@
                             class={`w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center text-red-500 ${colors.length <= 3 ? 'text-gray-600 opacity-50 !cursor-not-allowed' : ''} cursor-pointer`}
                             aria-label="Remove player"
                             title="Remove player"
-                            onmousedown={(e) => {
+                            onmousedown={() => {
                             if (colors.length > 3) {
                                 colors = colors.filter((_, index) => index !== i);
                                 activeSwatch = -1;

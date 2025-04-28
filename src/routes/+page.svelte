@@ -5,6 +5,7 @@
     import Swatches from "$lib/Swatches.svelte";
     import Audio from "$lib/Audio.svelte";
     import SoundSwitch from "$lib/SoundSwitch.svelte";
+    import DeckSelector from "$lib/DeckSelector.svelte";
 
     // Dice Setup
     let die1: Die, die2: Die;
@@ -25,8 +26,8 @@
     let progressBar: HTMLDivElement;
     let progressAnimation: Animation;
     let diceTotal: HTMLElement;
-    let showTooltip = $state(false);
     let revealLog = $state(false);
+    let soundSwitch: SoundSwitch;
 
     function wakeLockRequest() { // TODO test on mobile
         try {
@@ -67,6 +68,14 @@
         interval.on("resume", () => {
             interval.getTimeRemaining() < 5000 && audio.playBuildUp()
         }) // Resumes the sound only if it should be playing
+
+        // Fetch turn time from local storage
+        const storedTurnTime = localStorage.getItem('turnTime');
+        if (storedTurnTime) turnTime = JSON.parse(storedTurnTime);
+        $effect(() => {
+            // On turn time change, store the turn time in local storage
+            localStorage.setItem('turnTime', JSON.stringify(turnTime));
+        });
     });
 
     function createDeck(type: string) {
@@ -210,7 +219,7 @@
     }
 </script>
 
-<Audio bind:this={audio}/>
+<Audio bind:this={audio} getPref={soundSwitch?.getPref} />
 
 <main class="flex flex-col items-center min-h-full gap-3">
     <h1 class="text-3xl mt-6 font-mono font-bold">REAL TIME CATAN</h1>
@@ -262,8 +271,9 @@
         </button>
 
         <button
-                class={`w-24 p-4 text-center font-bold active:scale-90 hover:brightness-90 border border-gray-300 shadow-lg rounded-lg transition duration-200 ${timer ? "bg-green-100" : "bg-white"}`}
+                class={`w-24 p-4 text-center font-bold active:scale-90 hover:brightness-90 border border-gray-300 shadow-lg rounded-lg transition duration-200 ${timer ? "bg-green-100" : "bg-white"} disabled:hover:brightness-100 disabled:cursor-not-allowed disabled:bg-gray-200`}
                 onclick={skipTurn}
+                disabled={turnCount === 0 || total === "--"}
                 title="Skips the waiting time and rolls the dice"
         >
             Next >>
@@ -278,43 +288,10 @@
         <Swatches bind:colors/>
 
         <label for="sounds" class="text-lg cursor-help" title="Sounds: Mute, Ding, or Drumroll with Build-up">Sounds</label>
-        <SoundSwitch/>
+        <SoundSwitch bind:this={soundSwitch} />
 
         <label for="fairDice" class="text-lg cursor-help" title="The fair dice deck determines how random the rolls are">Fair Dice</label>
-        <div class="flex items-center relative">
-            <select id="fairDice"
-                    bind:value={deckType}
-                    class="border border-gray-300 bg-gray-100 rounded-lg p-1 h-10 w-full text-lg focus:outline-none transition duration-200"
-            >
-                {#each ["Chaos", "Dice Deck", "Balanced", "Double Deck"] as option}
-                    <option value={option}>
-                        {option}
-                    </option>
-                {/each}
-            </select>
-            <div class="absolute -right-14">
-                <button
-                        class="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center cursor-pointer bg-gray-100 text-gray-600 hover:text-gray-900 hover:bg-gray-200 focus:outline-none transition duration-100"
-                        aria-label="Dice Explanation"
-                        onclick={() => showTooltip = !showTooltip}
-                        onblur={() => showTooltip = false}
-                >?
-                </button>
-                {#if showTooltip}
-                    <div class="absolute bottom-9 right-0 bg-white border border-gray-300 shadow-lg rounded-lg p-4 w-64 z-10">
-                        <strong> Chaos </strong> <span>Each roll is completely random</span> <br>
-                        <strong> Dice Deck </strong> <span>Uses a deck of all possible rolls (36)</span> <br>
-                        <strong> Balanced </strong> <span>Uses a deck, but resets after (24) <a
-                            class="text-blue-500 hover:underline"
-                            href="https://blog.colonist.io/designing-balanced-dice/"
-                            ontouchend={ () => window.open("https://blog.colonist.io/designing-balanced-dice/", "_blank")}
-                            onmousedown={ () => window.open("https://blog.colonist.io/designing-balanced-dice/", "_blank")}
-                    >to mix it up</a></span> <br>
-                        <strong> Double Deck </strong> <span>Combines two decks (72) for an even spread over an average game</span>
-                    </div>
-                {/if}
-            </div>
-        </div>
+        <DeckSelector bind:deckType />
 
         <label for="turn" class="text-lg cursor-help" title="Strongly Recommended Turn Time: 30s">Turn Time</label>
         <input

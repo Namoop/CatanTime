@@ -26,6 +26,7 @@
             // reset the element to its original size
             element.style = ""
         }
+    }
 
 </script>
 

@@ -6,6 +6,7 @@
     import Audio from "$lib/Audio.svelte";
     import SoundSwitch from "$lib/SoundSwitch.svelte";
     import DeckSelector from "$lib/DeckSelector.svelte";
+    import Fullscreen from "$lib/Fullscreen.svelte";
 
     // Dice Setup
     let die1: Die, die2: Die;
@@ -20,6 +21,10 @@
     let wakeLock: WakeLockSentinel | null = null;
     let interval = new Interval(CONFIG.turn * 1000, turn, 1500);
     let soundTimer: Timer;
+    let turnModifier = $state(0);
+    let calculatedTime = $derived.by(() => {
+        return CONFIG.turn * 1000 + turnModifier * 1000 * Math.log(turnCount);
+    });
 
     // Elements
     let audio: Audio;
@@ -72,9 +77,12 @@
         // Fetch turn time from local storage
         const storedTurnTime = localStorage.getItem('turnTime');
         if (storedTurnTime) turnTime = JSON.parse(storedTurnTime);
+        const storedModifier = localStorage.getItem('turnModifier');
+        if (storedModifier) turnModifier = JSON.parse(storedModifier);
         $effect(() => {
             // On turn time change, store the turn time in local storage
             localStorage.setItem('turnTime', JSON.stringify(turnTime));
+            localStorage.setItem('turnModifier', JSON.stringify(turnModifier));
         });
     });
 
@@ -99,10 +107,11 @@
                         deck.push([i, j], [i, j])
                 shuffle(deck)
                 break;
-            case "Deck":
+            case "Dice Deck":
                 for (let i = 1; i <= 6; i++)
                     for (let j = 1; j <= 6; j++)
                         deck.push([i, j])
+                shuffle(deck);
                 break;
         }
         return deck as DieValue[][];
@@ -115,7 +124,6 @@
 
         // While there remain elements to shuffle…
         while (m) {
-
             // Pick a remaining element…
             i = Math.floor(Math.random() * m--);
 
@@ -193,13 +201,13 @@
 
         turnCount++;
         CONFIG.turn = turnTime;
-        interval.setInitialTime(CONFIG.turn * 1000);
-        interval.setTime(CONFIG.turn * 1000);
-        soundTimer.setInitialTime(CONFIG.turn * 1000 - 4990);
-        soundTimer.setTime(CONFIG.turn * 1000 - 4990);
+        interval.setInitialTime(calculatedTime);
+        interval.setTime(calculatedTime);
+        soundTimer.setInitialTime(calculatedTime - 4990);
+        soundTimer.setTime(calculatedTime - 4990);
 
         progressAnimation.cancel();
-        progressAnimation.playbackRate = 5 / CONFIG.turn; // 5 is the default turn time
+        progressAnimation.playbackRate = 5000 / calculatedTime; // 5s is the default turn time
     }
 
     function skipTurn() {
@@ -220,6 +228,7 @@
 </script>
 
 <Audio bind:this={audio} getPref={soundSwitch?.getPref} />
+<Fullscreen />
 
 <main class="flex flex-col items-center min-h-full gap-3">
     <h1 class="text-3xl mt-6 font-mono font-bold">REAL TIME CATAN</h1>
@@ -230,6 +239,7 @@
         by Theodore Capinski
     </a>
 
+    <div class="flex flex-col items-center min-h-full gap-3 transition-all w-96" id="dicediv">
     <div
             id="turnCount"
             class="w-24 text-center bg-white border border-gray-300 shadow-lg rounded-lg p-4"
@@ -247,10 +257,14 @@
         <div
                 id="diceTotal"
                 bind:this={diceTotal}
-                class="w-16 text-center bg-white border border-gray-300 shadow-lg rounded-lg p-4 text-2xl"
+                class="w-24 text-center font-bold bg-white border border-gray-300 shadow-lg rounded-lg p-4 text-6xl"
         >
             {total}
         </div>
+
+        {#if turnModifier > 0}
+            <span class="italic m-2">Total time per turn: {calculatedTime > 0 ? Math.round(calculatedTime/100) / 10 : turnTime}s</span>
+        {/if}
         <div
                 bind:this={progressBar}
                 class="p-1 bg-blue-600 rounded-lg m-2"
@@ -279,6 +293,8 @@
             Next >>
         </button>
     </div>
+    </div>
+
 
     <div
             id="config"
@@ -301,11 +317,21 @@
                 id="turn"
                 class="border border-gray-300 rounded-lg p-2 text-lg h-10 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-center"
         />
+
+        <label for="modifier" class="text-lg cursor-help" title="Adds time to the timer based on x * log(turn count). See Overview">Time Modifier</label>
+        <input
+                type="number"
+                step="1"
+                bind:value={turnModifier}
+                id="modifier"
+                class="border border-gray-300 rounded-lg p-2 text-lg h-10 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-center"
+        />
+
     </div>
 
     <div
             id="config"
-            class="flex flex-col gap-3 w-72 bg-white border border-gray-300 shadow-lg rounded-lg p-4"
+            class="flex flex-col gap-3 w-80 bg-white border border-gray-300 shadow-lg rounded-lg p-4"
     >
         <h2 class="text-xl w-full text-center">Description</h2>
 
@@ -344,6 +370,19 @@
                 <li>Pause the game as needed, e.g. knights or monopoly</li>
                 <li>Each person can only play one development card per roll</li>
                 <li>Further, only one knight can be played (by anybody) per roll</li>
+            </ul>
+        </details>
+
+        <details>
+            <summary class="font-bold">Timer and Modifier</summary>
+            <p>
+                The timer is based on both the <strong>Turn Time</strong> and <strong>Time Modifier</strong>.
+            </p><br>
+            <ul class="list-disc list-inside">
+                <li>I strongly recommend a 30s turn time</li>
+                <li>To avoid hitting "Next" a lot in the slow early game, use modifier</li>
+                <li>It adds time to the timer based on x * log(turn count)</li>
+                <li>For this I strongly recommend 10s turn time and a modifier of 5</li>
             </ul>
         </details>
     </div>

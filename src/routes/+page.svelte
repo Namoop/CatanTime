@@ -7,16 +7,17 @@
     import SoundSwitch from "$lib/SoundSwitch.svelte";
     import DeckSelector from "$lib/DeckSelector.svelte";
     import Fullscreen from "$lib/Fullscreen.svelte";
+    import ReadSwitch from "$lib/ReadSwitch.svelte";
 
     // Dice Setup
     let die1: Die, die2: Die;
     let dice: DieValue[] = $state([0, 0] as unknown as DieValue[]);
-    let total = $state(0), sevens = $state(0);
+    let total: number | '2/12' | '--' = $state(0), sevens = $state(0);
     let deckType = $state("Balanced");
     let Deck: DieValue[][] = $derived(createDeck(deckType));
 
     // Timer Setup
-    const CONFIG = $state({turn: 5,});    // Why is this here?
+    const CONFIG = $state({turn: 5, twotwelve: false});    // Why is this here?
     let turnTime = $state(CONFIG.turn), turnCount = $state(0);
     let wakeLock: WakeLockSentinel | null = null;
     let interval = new Interval(CONFIG.turn * 1000, turn, 1500);
@@ -27,12 +28,13 @@
     });
 
     // Elements
-    let audio: Audio;
+    let audio: Audio; // TODO scream the numbers (add new sound setting for [none, sane, adhd, panic])
     let progressBar: HTMLDivElement;
     let progressAnimation: Animation;
     let diceTotal: HTMLElement;
     let revealLog = $state(false);
     let soundSwitch: SoundSwitch;
+    let readSwitch: ReadSwitch;
 
     function wakeLockRequest() { // TODO test on mobile
         try {
@@ -71,7 +73,7 @@
             audio.pauseBuildUp()
         })
         interval.on("resume", () => {
-            interval.getTimeRemaining() < 5000 && audio.playBuildUp()
+            (interval.getTimeRemaining() < 5000) && audio.playBuildUp()
         }) // Resumes the sound only if it should be playing
 
         // Fetch turn time from local storage
@@ -87,6 +89,8 @@
     });
 
     function createDeck(type: string) {
+        return [[1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [6, 2], [6, 3], [6, 4], [6, 5], [6, 6]]
+
         let deck = [];
         const randDie = () => ((Math.random() * 6 + 1) | 0)
         switch (type) {
@@ -151,17 +155,21 @@
         die2.rollDie(dice[1]);
         deckLog.push(dice);
 
-        total = "--" as unknown as number;                   // Adds some suspense
+        total = "--";                   // Adds some suspense
         progressAnimation.pause();
         await sleep(die1.ROLL_TIME - 5);                     // Needs to catch a 7 during the delay or everything breaks i guess
         if (CONFIG.turn >= 5 && timer) soundTimer.start();   // Build up only plays if there is at least 5 seconds
         audio.stopBuildUp();
 
         total = dice[0] + dice[1];
+        if (total % 10 == 2 && CONFIG.twotwelve) total = "2/12";
+        readSwitch.playSound(total)
+
         if (dice[0] + dice[1] == 7) {
-            diceTotal.style.backgroundColor = colors[sevens++ % colors.length];
+            const color = colors[sevens++ % colors.length]
+            diceTotal.style.backgroundColor = color;
             diceTotal.style.opacity = "0.8";
-            diceTotal.style.color = "white";
+            if (color !== "white") diceTotal.style.color = "white";
             if (timer) stopTimer();
         }
 
@@ -191,7 +199,7 @@
         timer = false;
         interval.pause();
         if (soundTimer.isRunning()) soundTimer.pause();
-        wakeLockRelease();
+        // wakeLockRelease();
         progressAnimation.pause();
     }
 
@@ -257,7 +265,7 @@
         <div
                 id="diceTotal"
                 bind:this={diceTotal}
-                class="w-24 text-center font-bold bg-white border border-gray-300 shadow-lg rounded-lg p-4 text-6xl"
+                class="min-w-24 text-center font-bold bg-white border border-gray-300 shadow-lg rounded-lg p-4 text-6xl"
         >
             {total}
         </div>
@@ -303,11 +311,21 @@
         <label for="playerOrder" class="text-lg cursor-help" title="Settlement Placement Order and Robber Order">Player Order</label>
         <Swatches bind:colors/>
 
+        <label for="sounds" class="text-lg cursor-help" title="Sounds: Mute, Ding, or Drumroll with Build-up">Read Result</label>
+        <ReadSwitch bind:this={readSwitch} />
+
         <label for="sounds" class="text-lg cursor-help" title="Sounds: Mute, Ding, or Drumroll with Build-up">Sounds</label>
         <SoundSwitch bind:this={soundSwitch} />
 
         <label for="fairDice" class="text-lg cursor-help" title="The fair dice deck determines how random the rolls are">Fair Dice</label>
         <DeckSelector bind:deckType />
+
+        <label for="212" class="text-lg cursor-help" title="Play with the rule that 2s and 12s activate each other">2/12 Rule</label>
+        <div class="w-full flex items-center justify-center"><input
+                type="checkbox"
+                id="212"
+                class="w-6 h-6 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                bind:checked={CONFIG.twotwelve}/></div>
 
         <label for="turn" class="text-lg cursor-help" title="Strongly Recommended Turn Time: 30s">Turn Time</label>
         <input
@@ -384,6 +402,16 @@
                 <li>It adds time to the timer based on x * log(turn count)</li>
                 <li>For this I strongly recommend 10s turn time and a modifier of 5</li>
             </ul>
+        </details>
+
+        <details>
+            <summary class="font-bold">Attributions</summary>
+            <p>
+                Epic voice count by dersuperanton -- https://freesound.org/s/434729/
+            </p>
+            <p>
+                Children Counting to Twenty by f-r-a-g-i-l-e -- https://freesound.org/s/483155/
+            </p>
         </details>
     </div>
 

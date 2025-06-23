@@ -10,8 +10,6 @@
         console.log(isFullscreen);
         if (isFullscreen) {
             // scale the element to fit the screen
-            // let winmax = Math.max(window.innerWidth, window.innerHeight);
-            // let scale = winmax / 500;
             let scale = 1;
             if (window.innerWidth < window.innerHeight) {
                 scale = window.innerWidth / 400;
